@@ -65,43 +65,13 @@ RegisterNetEvent('p_ox_inventory_addon:updateMagazine', function(action, value, 
 	updateMagazine(source, action, value, slot, specialAmmo)
 end)
 
-RegisterNetEvent('p_ox_inventory_addon:updateMagazineLabel', function(slot, removeLabel)
-    local src = source
-    local item = exports.ox_inventory:GetSlot(src, slot)
-    if item and item.metadata then
-        local newMetadata = item.metadata
-        
-        if removeLabel then
-            -- Remove lightning bolt when detaching
-            if newMetadata.label then
-                newMetadata.label = newMetadata.label:gsub('⚡ ', '')
-            end
-            newMetadata.description = nil
-        else
-            -- Add lightning bolt when attaching
-            if newMetadata.label then
-                newMetadata.label = newMetadata.label:gsub('⚡ ', '') -- Clean first
-            end
-            newMetadata.description = '⚡ Currently Equipped'
-            newMetadata.label = '⚡ ' .. (newMetadata.label or 'Magazine')
-        end
-        
-        exports.ox_inventory:SetMetadata(src, slot, newMetadata)
-    end
-end)
-
 exports.ox_inventory:registerHook('swapItems', function(payload)
     if type(payload.toSlot) == 'table' and payload.toSlot.name == 'magazine' then
         if type(payload.fromSlot) == 'table' and payload.fromSlot.name == payload.toSlot.metadata.ammoType then
-            CreateThread(function()
-                --New Issue found here.. Notes added. When manual load, we can add more bullets to mag than allowed.
-                local magCheck = payload.toSlot.metadata.ammo + 1
-                if magCheck > payload.toSlot.metadata.magSize then return false end
-                payload.toSlot.metadata.ammo = magCheck
-                payload.toSlot.metadata.durability = math.max(1, math.floor((magCheck / payload.toSlot.metadata.magSize) * 100))
-                if not exports.ox_inventory:RemoveItem(payload.source, payload.fromSlot.name, 1) then return end
-                exports.ox_inventory:SetMetadata(payload.source, payload.toSlot.slot, payload.toSlot.metadata)
-             end)
+            -- Trigger client-side packMagazine
+            TriggerClientEvent('p_ox_inventory_addon:packMagazine', payload.source, payload.toSlot)
+            
+            -- Prevent normal swap
             return false
         end
     end
